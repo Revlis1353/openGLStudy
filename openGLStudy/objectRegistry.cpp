@@ -26,7 +26,7 @@ void objectRegistry::registerDynamicObject(vertexObject* vo) {
 }
 
 void objectRegistry::drawStaticObjects() {
-
+	//do something
 }
 
 void objectRegistry::drawDynamicObjects(float deltaTime, GLuint vertexbuffer) {
@@ -36,6 +36,8 @@ void objectRegistry::drawDynamicObjects(float deltaTime, GLuint vertexbuffer) {
 		std::vector<glm::vec3> currentVertex = (*dynamicObjects[i]).doPhysicCalc(deltaTime);
 		dynamicVertex.insert(dynamicVertex.end(), currentVertex.begin(), currentVertex.end());
 	}
+
+	//I will use atlas texture in here
 	
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 	glBufferData(GL_ARRAY_BUFFER, 3 * dynamicVertex.size() * sizeof(float), dynamicVertex.data(), GL_DYNAMIC_DRAW);
@@ -54,7 +56,9 @@ void objectRegistry::drawDynamicObjects(float deltaTime, GLuint vertexbuffer) {
 	glDrawArrays(GL_TRIANGLES, 0, 3 * dynamicVertex.size());
 	glDisableVertexAttribArray(1);
 }
+
 const double G = 6.67384 * pow(10, -11);
+
 void objectRegistry::doGravity() {
 	int i, j;
 	for (i = 0; i < dynamicObjects.size(); i++) {
