@@ -173,13 +173,7 @@
     <ClInclude Include="vertexObject.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="cubebackup.obj">
-      <FileType>Document</FileType>
-    </Text>
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="dynamicTexture.png" />
-    <Image Include="dynamicTexturebackup.DDS" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="cube.obj">
