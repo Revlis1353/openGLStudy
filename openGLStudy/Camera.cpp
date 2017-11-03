@@ -9,7 +9,7 @@
 Camera::Camera(int initWidth, int initHeight)
 {
 	Model = glm::mat4(1.0f);
-	position = glm::vec3(4.0, 3.0, 3.0);
+	position = glm::vec3(0.0, 0.0, -6.0);
 	speed = 3;
 	mouseSpeed = 0.030f;
 	FOV = 60;

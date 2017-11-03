@@ -93,13 +93,9 @@ int main() {
 	vertexObject VO1 = vertexObject("cube.obj", 1000, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f));
 	vertexObject VO2 = vertexObject("cube.obj", 1000, glm::vec3(4.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
-	objectRegistry OR = objectRegistry();
+	objectRegistry OR = objectRegistry(programID);
 	OR.registerDynamicObject(&VO1);
-	OR.registerDynamicObject(&VO2);
-
-	GLuint vertexbuffer1;
-	glGenBuffers(1, &vertexbuffer1);
-	
+	OR.registerDynamicObject(&VO2);	
 
 	double deltaTime = 0, currentTime = glfwGetTime(), lastTime = glfwGetTime();
 	int nbFrames = 0;
@@ -111,14 +107,14 @@ int main() {
 		mouseInput(camera, window, deltaTime);
 
 		mvp = camera.getMVP(); 
-
+		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glUseProgram(programID);
 
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &(*mvp)[0][0]);
 
-		OR.drawDynamicObjects((float)deltaTime, vertexbuffer1);
+		OR.drawDynamicObjects((float)deltaTime);
 		OR.doGravity();
 
 		glfwSwapBuffers(window);
@@ -128,7 +124,6 @@ int main() {
 	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
 		glfwWindowShouldClose(window) == 0);
 
-	glDeleteBuffers(1, &vertexbuffer1);
 	glDeleteVertexArrays(1, &VertexArrayID);
 	glDeleteProgram(programID);
 

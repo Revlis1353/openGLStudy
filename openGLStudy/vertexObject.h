@@ -17,6 +17,7 @@ public:
 	vertexObject(const char * objectPath, float Mass, glm::vec3 Position, glm::vec3 Scale);
 	~vertexObject();
 	std::vector<glm::vec3> doPhysicCalc(float deltaTime);
+	std::vector<glm::vec2> getUVData();
 	void applyForce(glm::vec3 force);
 	glm::vec3 getPos();
 	float getMass();

@@ -55,8 +55,19 @@
     <Text Include="vertexShader1.h">
       <Filter>헤더 파일</Filter>
     </Text>
+    <Text Include="cubebackup.obj">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="dynamicTexture.png">
+      <Filter>리소스 파일</Filter>
+    </Text>
     <Text Include="cube.obj">
       <Filter>리소스 파일</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="dynamicTexturebackup.DDS">
+      <Filter>리소스 파일</Filter>
+    </Image>
   </ItemGroup>
 </Project>
