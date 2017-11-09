@@ -9,19 +9,27 @@
 
 #include "vertexObject.h"
 #include "objectRegistry.h"
+#include "tangentspace.hpp"
 
 objectRegistry::objectRegistry(GLuint ProgramID){
 	staticObjects = std::vector<vertexObject*>();
 	dynamicObjects = std::vector<vertexObject*>();
+	dynamicVertex = std::vector<glm::vec3>();
 	dynamicUV = std::vector<glm::vec2>();
 	
 	FreeImage_Initialise(true);
 
-	dynamicTextureID = loadTexture("dynamicTexture.png");
+	dynamicTextureID = loadTexture("diffuse.DDS");
 	dynamicTextureLocation = glGetUniformLocation(ProgramID, "dynamicTextureSampler");
+
+	dynamicNormalID = loadTexture("normal.bmp");
+	dynamicNormalLocation = glGetUniformLocation(ProgramID, "dynamicNormalSampler");
 
 	glGenBuffers(1, &dynamicVertexbuffer);
 	glGenBuffers(1, &dynamicUVbuffer);
+	glGenBuffers(1, &dynamicNormalbuffer);
+	glGenBuffers(1, &dynamicTangentbuffer);
+	glGenBuffers(1, &dynamicBitangentbuffer);
 }
 
 
@@ -29,6 +37,9 @@ objectRegistry::~objectRegistry(){
 	glDeleteTextures(1, &dynamicTextureID);
 	glDeleteBuffers(1, &dynamicVertexbuffer);
 	glDeleteBuffers(1, &dynamicUVbuffer);
+	glDeleteBuffers(1, &dynamicNormalbuffer);
+	glDeleteBuffers(1, &dynamicTangentbuffer);
+	glDeleteBuffers(1, &dynamicBitangentbuffer);
 	FreeImage_DeInitialise();
 }
 
@@ -38,14 +49,46 @@ void objectRegistry::registerStaticObject(vertexObject* vo) {
 
 void objectRegistry::registerDynamicObject(vertexObject* vo) {
 	dynamicObjects.push_back(vo);
-	std::vector<glm::vec2> tempUV = vo->getUVData();
+
 	int i;
+
+	dynamicVertex.clear();
+	for (i = 0; i < dynamicObjects.size(); i++) {
+		std::vector<glm::vec3> currentVertex = (*dynamicObjects[i]).getVertexData();
+		dynamicVertex.insert(dynamicVertex.end(), currentVertex.begin(), currentVertex.end());
+	}
+
+	std::vector<glm::vec2> tempUV = vo->getUVData();
 	for (i = 0;i < tempUV.size(); i++) {
 		dynamicUV.push_back(tempUV[i]);
 	}
+
+	std::vector<glm::vec3> tempNormal = vo->getNormalData();
+	for (i = 0;i < tempNormal.size(); i++) {
+		dynamicNormal.push_back(tempNormal[i]);
+	}
+
+	computeTangentBasis(
+		dynamicVertex, dynamicUV, dynamicNormal,
+		dynamicTangents, dynamicBitangents
+		);
 	
+
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexbuffer);
+	glBufferData(GL_ARRAY_BUFFER, 3 * dynamicVertex.size() * sizeof(float), dynamicVertex.data(), GL_DYNAMIC_DRAW);
+
 	glBindBuffer(GL_ARRAY_BUFFER, dynamicUVbuffer);
 	glBufferData(GL_ARRAY_BUFFER, 2 * dynamicUV.size() * sizeof(float), dynamicUV.data(), GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicNormalbuffer);
+	glBufferData(GL_ARRAY_BUFFER, 3 * dynamicNormal.size() * sizeof(float), dynamicNormal.data(), GL_STATIC_DRAW);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicTangentbuffer);
+	glBufferData(GL_ARRAY_BUFFER, 3 * dynamicTangents.size() * sizeof(float), dynamicTangents.data(), GL_STATIC_DRAW);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicBitangentbuffer);
+	glBufferData(GL_ARRAY_BUFFER, 3 * dynamicBitangents.size() * sizeof(float), dynamicBitangents.data(), GL_STATIC_DRAW);
+
 }
 
 void objectRegistry::drawStaticObjects() {
@@ -54,7 +97,7 @@ void objectRegistry::drawStaticObjects() {
 
 void objectRegistry::drawDynamicObjects(float deltaTime) {
 	int i;
-	std::vector<glm::vec3> dynamicVertex;
+	dynamicVertex.clear();
 	for (i = 0; i < dynamicObjects.size(); i++) {
 		std::vector<glm::vec3> currentVertex = (*dynamicObjects[i]).doPhysicCalc(deltaTime);
 		dynamicVertex.insert(dynamicVertex.end(), currentVertex.begin(), currentVertex.end());
@@ -63,10 +106,15 @@ void objectRegistry::drawDynamicObjects(float deltaTime) {
 	glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexbuffer);
 	glBufferData(GL_ARRAY_BUFFER, 3 * dynamicVertex.size() * sizeof(float), dynamicVertex.data(), GL_DYNAMIC_DRAW);
 
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, dynamicTextureID);
 
-	glUniform1i(dynamicTextureLocation, 0);
+	glUniform1i(dynamicTextureLocation, 1);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, dynamicNormalID);
+
+	glUniform1i(dynamicNormalLocation, 2);
 
 	glEnableVertexAttribArray(2);
 	glBindBuffer(GL_ARRAY_BUFFER, dynamicVertexbuffer);
@@ -90,9 +138,46 @@ void objectRegistry::drawDynamicObjects(float deltaTime) {
 		(void*)0                          // array buffer offset
 		);
 
+	glEnableVertexAttribArray(4);
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicNormalbuffer);
+	glVertexAttribPointer(
+		4,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+		3,                                // size 
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+		);
+
+	glEnableVertexAttribArray(5);
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicTangentbuffer);
+	glVertexAttribPointer(
+		5,                                // attribute
+		3,                                // size
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+		);
+
+	// 5th attribute buffer : bitangents
+	glEnableVertexAttribArray(6);
+	glBindBuffer(GL_ARRAY_BUFFER, dynamicBitangentbuffer);
+	glVertexAttribPointer(
+		6,                                // attribute
+		3,                                // size
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+		);
+
 	glDrawArrays(GL_TRIANGLES, 0, 3 * dynamicVertex.size());
 	glDisableVertexAttribArray(2);
 	glDisableVertexAttribArray(3);
+	glDisableVertexAttribArray(4);
+	glDisableVertexAttribArray(5);
+	glDisableVertexAttribArray(6);
 }
 
 const double G = 6.67384 * pow(10, -11);
@@ -109,6 +194,14 @@ void objectRegistry::doGravity() {
 			(*dynamicObjects[j]).applyForce(forceV);
 		}
 	}
+}
+
+GLuint objectRegistry::getDynamicVertex() {
+	return dynamicVertexbuffer;
+}
+
+int objectRegistry::getDynamicVerticesSize() {
+	return dynamicVertex.size();
 }
 
 GLuint objectRegistry::loadTexture(std::string filenameString, GLenum minificationFilter, GLenum magnificationFilter) {

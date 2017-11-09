@@ -36,8 +36,15 @@ std::vector<glm::vec3> vertexObject::doPhysicCalc(float deltaTime) {
 }
 
 std::vector<glm::vec2> vertexObject::getUVData() {
-	int i;
 	return UVData;
+}
+
+std::vector<glm::vec3> vertexObject::getVertexData() {
+	return vertexData;
+}
+
+std::vector<glm::vec3> vertexObject::getNormalData() {
+	return normals;
 }
 
 void vertexObject::applyForce(glm::vec3 force) {

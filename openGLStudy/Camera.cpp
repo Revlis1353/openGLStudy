@@ -49,6 +49,14 @@ glm::mat4 * Camera::getMVP() {
 	return &MVP;
 }
 
+glm::mat4 * Camera::getView() {
+	return &View;
+}
+
+glm::mat4 * Camera::getModel() {
+	return &Model;
+}
+
 void Camera::refreshProjection() {
 	Projection = glm::perspective(glm::radians(FOV), (float)width / (float)height, 0.1f, 100.0f);
 	refreshMVP();

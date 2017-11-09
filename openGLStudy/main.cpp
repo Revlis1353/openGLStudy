@@ -34,6 +34,7 @@ void mouseInput(Camera &camera, GLFWwindow *window, double deltaTime);
 void checkFrame(int *nbFrames, double * lastTime, double * currentTime, double * deltaTime);
 void setWindowSizeCallback(GLFWwindow* window, int width, int height);
 void setKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void checkMatrix(glm::mat4 checkmat);
 
 GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_path);
 GLuint LoadShadersFromChar(const char * vertex_char, const char * fragment_char);
@@ -57,7 +58,6 @@ int main() {
 		glfwTerminate();
 		return -1;
 	}
-
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1); //V-Sync enable
 
@@ -77,6 +77,7 @@ int main() {
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
 
 	Camera camera(width, height);
 
@@ -86,33 +87,144 @@ int main() {
 	glGenVertexArrays(1, &VertexArrayID);
 	glBindVertexArray(VertexArrayID);
 
-	GLuint programID = LoadShadersFromChar(vertexShader1, fragmentShader1);
+	//GLuint programID = LoadShadersFromChar(vertexShader1, fragmentShader1);
+	GLuint programID = LoadShaders("vertshad", "fragshad");
+	GLuint DepthprogramID = LoadShaders("DepthVertex.txt", "DepthFragment.txt");
 
 	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
+	GLuint ModelMatrixID = glGetUniformLocation(programID, "M");
+	GLuint ViewMatrixID = glGetUniformLocation(programID, "V");
 
-	vertexObject VO1 = vertexObject("cube.obj", 1000, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f));
-	vertexObject VO2 = vertexObject("cube.obj", 1000, glm::vec3(4.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+	//vertexObject VO1 = vertexObject("cube.obj", 1000, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f));
+	vertexObject VO2 = vertexObject("room_thickwalls.obj", 1000, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
 	objectRegistry OR = objectRegistry(programID);
-	OR.registerDynamicObject(&VO1);
+	//OR.registerDynamicObject(&VO1);
 	OR.registerDynamicObject(&VO2);	
+
+
+	/////////////////////////
+	GLuint depthMatrixID = glGetUniformLocation(DepthprogramID, "depthMVP");
+	GLuint depthBiasID = glGetUniformLocation(programID, "DepthBiasMVP");
+	GLuint ShadowMapID = glGetUniformLocation(programID, "shadowMap");
+	GLuint lightInvDirID = glGetUniformLocation(programID, "LightInvDirection_worldspace");
+	GLuint MV3x3ID = glGetUniformLocation(programID, "MV3x3");
+	GLuint LightID = glGetUniformLocation(programID, "LightPosition_worldspace");
+	/////////////////////////
+
+	//////////////////////////////////////////////////////
+	GLuint FramebufferName = 1;
+	glGenFramebuffers(1, &FramebufferName);
+	glBindFramebuffer(GL_FRAMEBUFFER, FramebufferName);
+
+	// Depth texture. Slower than a depth buffer, but you can sample it later in your shader
+	GLuint depthTexture;
+	glGenTextures(1, &depthTexture);
+	glBindTexture(GL_TEXTURE_2D, depthTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, 1024, 1024, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
+
+	glDrawBuffer(GL_NONE); // No color buffer is drawn to.
+
+						   // Always check that our framebuffer is ok
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return false;
+
+	//////////////////////////////////////////////////////
 
 	double deltaTime = 0, currentTime = glfwGetTime(), lastTime = glfwGetTime();
 	int nbFrames = 0;
 
 	do {
+
+		glBindFramebuffer(GL_FRAMEBUFFER, FramebufferName);
+
 		checkFrame(&nbFrames, &lastTime, &currentTime, &deltaTime);
 
 		keyInput(camera, window, deltaTime);
 		mouseInput(camera, window, deltaTime);
 
-		mvp = camera.getMVP(); 
 		
+
+		//////////////////////////////////////////////////////
+		
+		glViewport(0, 0, 1024, 1024);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK); // Cull back-facing triangles -> draw only front-facing triangles
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glUseProgram(DepthprogramID);
+
+		glm::vec3 lightInvDir = glm::vec3(0.5f, 2, 2);
+
+		glm::mat4 depthProjectionMatrix = glm::ortho<float>(-10, 10, -10, 10, -10, 20);
+		glm::mat4 depthViewMatrix = glm::lookAt(lightInvDir, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+		glm::mat4 depthModelMatrix = glm::mat4(1.0);
+		glm::mat4 depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
+
+		glUniformMatrix4fv(depthMatrixID, 1, GL_FALSE, &depthMVP[0][0]);
+		
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, OR.getDynamicVertex());
+
+		glVertexAttribPointer(
+			0,  // The attribute we want to configure
+			3,                  // size
+			GL_FLOAT,           // type
+			GL_FALSE,           // normalized?
+			0,                  // stride
+			(void*)0            // array buffer offset
+			);
+
+		glDrawArrays(GL_TRIANGLES, 0, 3 * OR.getDynamicVerticesSize());
+
+		glDisableVertexAttribArray(0);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, width, height);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glUseProgram(programID);
 
+		// Compute the MVP matrix from the light's point of view
+
+		glm::mat4 biasMatrix(
+			0.5, 0.0, 0.0, 0.0,
+			0.0, 0.5, 0.0, 0.0,
+			0.0, 0.0, 0.5, 0.0,
+			0.5, 0.5, 0.5, 1.0
+			);
+		glm::mat4 depthBiasMVP = biasMatrix*depthMVP;
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, depthTexture);
+		glUniform1i(ShadowMapID, 0);
+
+		// Send our transformation to the currently bound shader,
+		// in the "MVP" uniform
+		glUniformMatrix4fv(depthBiasID, 1, GL_FALSE, &depthBiasMVP[0][0]);
+		//////////////////////////////////////////////////////
+
+		glm::mat3 ModelView3x3 = glm::mat3(*camera.getView() * *camera.getModel());
+		mvp = camera.getMVP();
+
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &(*mvp)[0][0]);
+		glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &(*camera.getView())[0][0]);
+		glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &(*camera.getModel())[0][0]);
+		glUniformMatrix4fv(MV3x3ID, 1, GL_FALSE, &ModelView3x3[0][0]);
+		glUniform3f(lightInvDirID, lightInvDir.x, lightInvDir.y, lightInvDir.z);
+		//checkMatrix(depthBiasMVP);
 
 		OR.drawDynamicObjects((float)deltaTime);
 		OR.doGravity();
@@ -125,9 +237,22 @@ int main() {
 		glfwWindowShouldClose(window) == 0);
 
 	glDeleteVertexArrays(1, &VertexArrayID);
+	glDeleteFramebuffers(1, &FramebufferName);
+	glDeleteTextures(1, &depthTexture);
 	glDeleteProgram(programID);
+	glDeleteProgram(DepthprogramID);
 
 	glfwTerminate();
+
+	//system("pause");
+}
+
+void checkMatrix(glm::mat4 checkmat) {
+	int i, j;
+	for (i = 0; i < 4; i++) {
+		cout << checkmat[i][0] << " " << checkmat[i][1] << " " << checkmat[i][2] << " " << checkmat[i][3] << endl;
+	}
+	cout << endl;
 }
 
 void keyInput(Camera &camera, GLFWwindow *window, double deltaTime) {
@@ -173,7 +298,7 @@ void checkFrame(int *nbFrames, double * lastTime, double * currentTime, double *
 	*currentTime = tempTime;
 	(*nbFrames)++;
 	if (*currentTime - *lastTime >= 1.0) { 
-		printf("%f ms/frame\n", 1000.0 / double(*nbFrames));
+		//printf("%f ms/frame\n", 1000.0 / double(*nbFrames));
 		*nbFrames = 0;
 		*lastTime = *currentTime;
 	}

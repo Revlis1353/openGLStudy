@@ -1,0 +1,54 @@
+#version 430 core
+
+// Input vertex data, different for all executions of this shader.
+layout(location = 2) in vec3 vertexPosition_modelspace;
+layout(location = 3) in vec2 vertexUV;
+layout(location = 4) in vec3 vertexNormal_modelspace;
+layout(location = 5) in vec3 vertexTangent_modelspace;
+layout(location = 6) in vec3 vertexBitangent_modelspace;
+
+out vec2 UV;
+out vec3 Normal_cameraspace;
+out vec3 Position_worldspace;
+out vec3 EyeDirection_cameraspace;
+out vec3 LightDirection_cameraspace;
+out vec4 ShadowCoord;
+
+out vec3 LightDirection_tangentspace;
+out vec3 EyeDirection_tangentspace;
+
+// Values that stay constant for the whole mesh.
+uniform mat4 MVP;
+uniform mat4 V;
+uniform mat4 M;
+uniform vec3 LightInvDirection_worldspace;
+uniform mat4 DepthBiasMVP;
+uniform mat3 MV3x3;
+
+void main(){
+	UV = vertexUV;
+
+	gl_Position =  MVP * vec4(vertexPosition_modelspace,1);
+
+	Position_worldspace = (M * vec4(vertexPosition_modelspace,1)).xyz;
+
+	ShadowCoord = DepthBiasMVP * vec4(vertexPosition_modelspace,1);
+
+	EyeDirection_cameraspace = vec3(0,0,0) - ( V * M * vec4(vertexPosition_modelspace,1)).xyz;
+
+	LightDirection_cameraspace = (V*vec4(LightInvDirection_worldspace,0)).xyz;
+	
+	Normal_cameraspace = ( V * M * vec4(vertexNormal_modelspace,0)).xyz;; // Only correct if ModelMatrix does not scale the model ! Use its inverse transpose if not.
+	vec3 vertexTangent_cameraspace = MV3x3 * vertexTangent_modelspace;
+	vec3 vertexBitangent_cameraspace = MV3x3 * vertexBitangent_modelspace;
+	
+	mat3 TBN = transpose(mat3(
+		vertexTangent_cameraspace,
+		vertexBitangent_cameraspace,
+		Normal_cameraspace	
+	)); // You can use dot products instead of building this matrix and transposing it. See References for details.
+
+	LightDirection_tangentspace = TBN * LightDirection_cameraspace;
+	EyeDirection_tangentspace =  TBN * EyeDirection_cameraspace;
+}
+

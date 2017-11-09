@@ -21,6 +21,8 @@ public:
 	Camera(int width, int height);
 	~Camera();
 	glm::mat4 * getMVP();
+	glm::mat4 * getView();
+	glm::mat4 * getModel();
 	void refreshProjection();
 	void refreshView();
 	void Camera::refreshMVP();

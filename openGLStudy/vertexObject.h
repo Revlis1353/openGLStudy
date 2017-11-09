@@ -18,6 +18,8 @@ public:
 	~vertexObject();
 	std::vector<glm::vec3> doPhysicCalc(float deltaTime);
 	std::vector<glm::vec2> getUVData();
+	std::vector<glm::vec3> getVertexData();
+	std::vector<glm::vec3> getNormalData();
 	void applyForce(glm::vec3 force);
 	glm::vec3 getPos();
 	float getMass();

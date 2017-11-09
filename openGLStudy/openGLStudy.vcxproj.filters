@@ -33,6 +33,9 @@
     <ClCompile Include="objectRegistry.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="tangentspace.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -47,6 +50,9 @@
     <ClInclude Include="objectRegistry.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="tangentspace.hpp">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="fragmentShader1.h">
@@ -55,11 +61,34 @@
     <Text Include="vertexShader1.h">
       <Filter>헤더 파일</Filter>
     </Text>
-    <Text Include="dynamicTexture.png">
-      <Filter>리소스 파일</Filter>
-    </Text>
     <Text Include="cube.obj">
       <Filter>리소스 파일</Filter>
     </Text>
+    <Text Include="room_thickwalls.obj">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="fragshad">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="vertshad">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="DepthVertex.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="DepthFragment.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="normal.bmp">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="dynamicTexture.jpg">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="diffuse.DDS">
+      <Filter>리소스 파일</Filter>
+    </Image>
   </ItemGroup>
 </Project>
